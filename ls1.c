@@ -12,34 +12,35 @@
 
 
 int *options(int argc, char *argv[]){
-    int *bool_arr = malloc(7 * sizeof(int));
-    int c;
-    while((c = getopt(argc,argv, "lsaritR")) != -1){
-        switch (c) {
-            case 'l':
-                bool_arr[0] = 1;
-                break;
-            case 's':
-                bool_arr[1] = 1;
-                break;
-            case 'a':
-                bool_arr[2] = 1;
-                break;
-            case 'r':
-                bool_arr[3] = 1;
-                break;
-            case 'i':
-                bool_arr[4] = 1;
-                break;
-            case 't':
-                bool_arr[5] = 1;
-                break;
-            case 'R':
-                bool_arr[6] = 1;
-                break;
-                }
+  int *bool_arr = malloc(7 * sizeof(int));
+  memset(bool_arr, 0, 7*sizeof(int));
+  int c;
+  while((c = getopt(argc,argv, "lsaritR")) != -1){
+    switch (c) {
+      case 'l':
+        bool_arr[0] = 1;
+        break;
+      case 's':
+        bool_arr[1] = 1;
+        break;
+      case 'a':
+        bool_arr[2] = 1;
+        break;
+      case 'r':
+        bool_arr[3] = 1;
+        break;
+      case 'i':
+        bool_arr[4] = 1;
+        break;
+      case 't':
+        bool_arr[5] = 1;
+        break;
+      case 'R':
+        bool_arr[6] = 1;
+        break;
     }
-    return bool_arr;
+  }
+  return bool_arr;
 }
 
 char *convert_to_filesize(off_t size){
@@ -167,6 +168,7 @@ int main(int argc, char *argv[])
   char *filepath = malloc(512);
   int path_length = strlen(path); // for test this is 18.
   char *printed_str = malloc(1024);
+  memset(printed_str, '\0', 1024);
   memcpy(filepath, path, path_length);
   DIR *dirp = opendir(path);
   struct stat sb;
@@ -205,7 +207,9 @@ int main(int argc, char *argv[])
   close_dir:
   (void) s;
   closedir(dirp);
-
+  
+  free(printed_str);
+  free(path);
   free(filepath);
   free(opts);
   return retval;
