@@ -1,4 +1,3 @@
-#include "stdint.h"
 #include "stdio.h"
 #include "string.h"
 #include "unistd.h"
@@ -10,10 +9,19 @@
 #include "grp.h"
 #include "time.h"
 
+/*! TODO:
+ * when one of the user or group name is too long, output is fucked. Align it.
+ * Somehow...
+ *
+ * Implement recursive list 
+ *
+ * Implement giving more path like ls path1, path2, path3... 
+ *
+ */
 
 int *options(int argc, char *argv[]){
-  int *bool_arr = malloc(7 * sizeof(int));
-  memset(bool_arr, 0, 7*sizeof(int));
+  int *bool_arr = malloc(8 * sizeof(int));
+  memset(bool_arr, 0, 8*sizeof(int));
   int c;
   while((c = getopt(argc,argv, "lsaritR")) != -1){
     switch (c) {
@@ -40,6 +48,8 @@ int *options(int argc, char *argv[]){
         break;
     }
   }
+  // last element is the first non-option argument. 
+  bool_arr[7] = optind;
   return bool_arr;
 }
 
@@ -67,7 +77,11 @@ char *convert_to_filesize(off_t size){
     trunc_size = size;
     memcpy(str, "B", 2);
   }
-  sprintf(result, "%5.1f %-2s", trunc_size, str);
+  // if(trunc_size - (int)trunc_size == 0){
+  //   sprintf(result, "%-5d %-2s", (int)trunc_size, str);
+  // }
+  // else
+    sprintf(result, "%-5.1f %-2s", trunc_size, str);
   free(str);
   return result;
 }
@@ -160,13 +174,17 @@ int main(int argc, char *argv[])
 {
   // list, size, all, reverse, inode, time, Recursive
   int *opts = options(argc, argv);
+  int optind = opts[7];
   int retval = 0;
   int offset = 0;
   char *path = malloc(512);
-  strcpy(path, "/home/hardal/test");
+  if(argv[optind] == NULL){
+    getcwd(path, 512);
+  }
+  else strcpy(path, argv[optind]);
   add_slash(path);
   char *filepath = malloc(512);
-  int path_length = strlen(path); // for test this is 18.
+  int path_length = strlen(path);
   char *printed_str = malloc(1024);
   memset(printed_str, '\0', 1024);
   memcpy(filepath, path, path_length);
