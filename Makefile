@@ -15,6 +15,6 @@ cat1: cat1.c
 	cc $(FLAGS) $(LIBS) -o $(OUTDIR)cat1 cat1.c
 
 clean:
-	test -n $(OUTDIR) && rm $(OUTDIR)*
+	test $(OUTDIR) && rm $(OUTDIR)*
 
 
