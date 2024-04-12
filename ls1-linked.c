@@ -11,11 +11,12 @@
 
 /*! TODO:
  * when one of the user or group name is too long, output is fucked. Align it.
- * Somehow...
+ * Somehow... I don't know if this still is an issue, but I'm too lazy to check
+ * it rn.
  *
- * Implement recursive list 
+ * Implement recursive list
  *
- * Implement giving more path like ls path1, path2, path3... 
+ * Implement giving more path like ls path1, path2, path3...
  *
  */
 
@@ -77,10 +78,6 @@ char *convert_to_filesize(off_t size){
         trunc_size = size;
         memcpy(str, "B", 2);
     }
-  // if(trunc_size - (int)trunc_size == 0){
-  //   sprintf(result, "%-5d %-2s", (int)trunc_size, str);
-  // }
-  // else
     sprintf(result, "%-5.1f %-2s", trunc_size, str);
     free(str);
     return result;
@@ -95,20 +92,102 @@ void add_slash(char *filepath){
     filepath[size+1] = '\0';
 }
 
-/* New idea:
- * Just construct it with linked list.
-*/
+//num <=7
+int *conv_to_bin(int num){
+    int *binary_arr = (int *)malloc(3 * sizeof(int));
+    for (int i = 0; i < 3; i++) {
+        binary_arr[3-1-i] = (num >> i) & 1;
+    }
+    return binary_arr;
+}
+
+
+char *convert_permission_to_string(int perms){
+    // Integer definitions for permission bits. Also normalized it to 1-2-4.
+    int special =((perms & S_ISUID)+(perms & S_ISGID)+(perms & S_ISVTX))/512;
+    int user    = (perms & S_IRWXU)/64;
+    int group   = (perms & S_IRWXG)/8;
+    int others  = perms & S_IRWXO;
+
+    // These are integer arrays of length 3, the bit representations of
+    // respective variables.
+    // ex: 3 = 011 it means rw-
+    // read = 1, write = 2, exec = 4
+    // sticky = 1, gid = 2, uid = 4
+    int *user_bin = conv_to_bin(user);
+    int *group_bin = conv_to_bin(group);
+    int *others_bin = conv_to_bin(others);
+    int *special_bin = conv_to_bin(special);// [sticky, gid, uid]
+
+    /* arr = [
+    * usr_read,    usr_write,    usr_exec
+    * grp_read,    grp_write,    grp_exec
+    * others_read, others_write, others_exec
+    * SUID,        SGID,         Sticky bit
+    * ]*/
+    // 1 filetype, 3 user, 3 group, 3 others = 10
+    char *arr = malloc(11 * sizeof(char)); 
+    if(!arr){
+        fprintf(stderr, "Memory can not be allocated.");
+        return NULL;
+    }
+    memset(arr, '-', 10); //last byte should be null byte (\0)
+    arr[10] = '\0';
+ 
+    // Filetype 
+    if(S_ISREG(perms)) arr[0] = '.';
+    if(S_ISDIR(perms)) arr[0] = 'd';
+    if(S_ISCHR(perms)) arr[0] = 'c';
+    if(S_ISBLK(perms)) arr[0] = 'b';
+    if(S_ISFIFO(perms)) arr[0] = 'p';
+
+    // Owner user permissions
+    if(user_bin[0]) arr[1] = 'r';
+    if(user_bin[1]) arr[2] = 'w';
+    if(user_bin[2]) arr[3] = 'x';
+
+    // Owner group permissions
+    if(group_bin[0]) arr[4] = 'r';
+    if(group_bin[1]) arr[5] = 'w';
+    if(group_bin[2]) arr[6] = 'x';
+
+    // Others' permissions
+    if(others_bin[0]) arr[7] = 'r';
+    if(others_bin[1]) arr[8] = 'w';
+    if(others_bin[2]) arr[9] = 'x';
+
+    // GID, UID, Sticky bits
+    if(special_bin[2] && (arr[9] == 'x')) arr[9] = 't';
+    else if (special_bin[2]) arr[9] = 'T';
+    if(special_bin[1] && (arr[6] == 'x')) arr[6] = 's';
+    else if (special_bin[1]) arr[6] = 'S';
+    if(special_bin[0] && (arr[3] == 'x')) arr[3] = 's';
+    else if (special_bin[0]) arr[3] = 'S';
+    
+    free(user_bin);
+    free(group_bin);
+    free(others_bin);
+    free(special_bin);
+    return arr;
+}
+
 
 typedef struct node{
-    char *val;
+    char val[256];
     struct node *next;
 } node;
 
-node create(char *val){
-    node ret;
-    // strcpy(ret.val, val);
-    ret.val = strdup(val);
-    ret.next = NULL;
+
+node *create(char *val){
+    node *ret = (node *)malloc(sizeof(node));
+    if (ret != NULL) {
+        // strcpy(ret->val, val);
+        snprintf(ret->val, sizeof(ret->val), "%s", val);
+        ret->next = NULL;
+    }else{
+        fprintf(stderr, "Memory cannot be allocated.\n");
+        return NULL;
+    }
     return ret;
 }
 
@@ -120,62 +199,39 @@ void append(node *head, node *newNode){
     curNode->next = newNode;
 }
 
-/*
-  * Memory layout of a node struct:
-  * |--string(val)--|--next(node *)--|
-  * that string takes strlen(val) bytes,
-  * and 
-  *
-*/
-
-
-// that printing ...->val fucks it up somehow...
 void printlist(node *head){
     node *tmp = head;
-    int i = 0;
-    // printf("\nInside PRINT function:\n");
-    // printf("Our head node is: %s\n", head->val);
     if (tmp->next == NULL){
         printf("WTF\t");
     }
+    printf("%s", tmp->val);
     while(tmp->next != NULL){
-        i++;
-        printf("%d) %s\t",i, tmp->val);
         tmp = tmp->next;
+        printf("%s   ", tmp->val);
     }
-    printf("%s\t", tmp->val);
-    // printf("\nOutside PRINT function:\n");
 }
-
-void fill(node head){
-    node a = create("First fill");
-    node b = create("Second fill");
-    node c = create("Third fill");
-    
-    append(&head, &a);
-    append(&head, &b);
-    append(&head, &c);
-}
-
 
 void freelist(node *head){
-    node *tmp = head;
-    printf("tmp is: %s\n", tmp->val);
-    while(tmp->next != NULL){
-        printf("node with value %s is freed.\n", tmp->val);
-        free(tmp->val);
-        tmp = tmp->next;
+    node *cur = head;
+    node *next;
+    while(cur != NULL){
+        next = cur->next;
+        free(cur);
+        cur = next;
     }
-    free(tmp->val);
 }
 
-void resetlist(node *head){
-    node *tmp = head;
-    while(tmp->next != NULL){
-        memset(tmp->val, '\0', strlen(tmp->val));
-        tmp = tmp->next;
+char *removeNewline(char* str) {
+    int length = strlen(str);
+    for (int i = 0; i < length; i++) {
+        if (str[i] == '\n') {
+            str[i] = '\0'; 
+            return str;
+        }
     }
+    return str;
 }
+
 
 // ls -l contains the followings:
 //  * Permissions
@@ -184,63 +240,56 @@ void resetlist(node *head){
 //  * Last modify date
 //  * Filename (This is mandatory so we can assume it was already present in
 //  the output string)
-//
-// How to print lots of different datatypes...
-// Maybe convert all to char * but I guess there is a better way of doing it.
-node construct_list(node string, struct stat sb){
-    // int offst = 0;
+node *construct_list(node *string, struct stat sb){
     // Initial definitions
-    char *perms_str = malloc(25); // I guess it has 21 bits but I am not sure
     char *time_str; 
     // Spesific definitions
     mode_t perms = sb.st_mode; // unsigned int
+    char *perms_str = convert_permission_to_string(perms);
     struct group *grp = getgrgid(sb.st_gid);
     struct passwd *usr = getpwuid(sb.st_uid);
-    char *grp_name = grp->gr_name;
-    char *usr_name = usr->pw_name;
+    char *grp_name = malloc(50);//= grp->gr_name;
+    snprintf(grp_name, strlen(grp->gr_name)+10, "%-10s", grp->gr_name);
+    char *usr_name = malloc(50);//= usr->pw_name;
+    snprintf(usr_name, strlen(usr->pw_name)+10, "%-10s", usr->pw_name);
     off_t filesize = sb.st_size; // long
     struct timespec mtime = sb.st_mtim;
     time_t modif_time = mtime.tv_sec; // Seconds, long
-    time_str = ctime(&modif_time);
+    time_str = removeNewline(ctime(&modif_time));
 
     //Convert non-string ones to string
-    snprintf(perms_str, 23, "%d ", perms);
-    // snprintf(size_str, 13, "%lu ", filesize);
     char *size_str = convert_to_filesize(filesize);
     
     // Create the nodes
-    node head = string;
-    node perm_node = create(perms_str);
-    node usr_node = create(usr_name);
-    node grp_node = create(grp_name);
-    node size_node = create(size_str);
-    node time_node = create(time_str);
+    node *perm_node = create(perms_str);
+    node *usr_node = create(usr_name);
+    node *grp_node = create(grp_name);
+    node *size_node = create(size_str);
+    node *time_node = create(time_str);
 
-    append(&head, &perm_node);
-    append(&head, &usr_node);
-    append(&head, &grp_node);
-    append(&head, &size_node);
-    append(&head, &time_node);
-    // string.next = &perm_node;
-    // perm_node.next = &usr_node;
-    // usr_node.next = &grp_node;
-    // grp_node.next = &size_node;
-    // size_node.next = &time_node;
+    append(string, perm_node);
+    append(string, usr_node);
+    append(string, grp_node);
+    append(string, size_node);
+    append(string, time_node);
 
     //Free mallocs 
+    free(grp_name);
+    free(usr_name);
     free(perms_str);
     free(size_str);
-    return head;
+    return string;
 }
 
-void add_inode(node *string, struct stat sb){
-  ino_t inode = sb.st_ino;
-  char *inode_str = malloc(12); // needs 8 but i choose 12
-  snprintf(inode_str, 10, "%lu  ", inode);
-  node inode_node = create(inode_str);
-  append(string, &inode_node);
-  // memcpy(string, inode_str, 10);
-  free(inode_str);
+node *add_inode(node *string, struct stat sb){
+    ino_t inode = sb.st_ino;
+    char *inode_str = malloc(12); // needs 8 but i choose 12
+    snprintf(inode_str, 10, "%lu", inode);
+    node *inode_node = create(inode_str);
+    append(string, inode_node);
+    // memcpy(string, inode_str, 10);
+    free(inode_str);
+    return string;
 }
 
 
@@ -248,78 +297,65 @@ int main(int argc, char *argv[])
 {
     // list, size, all, reverse, inode, time, Recursive
     int *opts = options(argc, argv);
-    int optind = opts[7];
+    // int optind = opts[7];
     int retval = 0;
     // int offset = 0;
-    char *path = malloc(512);
-    if(argv[optind] == NULL){
-        getcwd(path, 512);
-    }
-    else strcpy(path, argv[optind]);
-    add_slash(path);
-    char *filepath = malloc(512);
-    int path_length = strlen(path);
-    node printed_str = create("Testing2");
-    // printed_str.val = malloc(1024);
-    // memset(printed_str.val, '\0', 1024);
-    // strcpy(printed_str.val, "Testing");
-    // memset(printed_str, '\0', 1024);
-    memcpy(filepath, path, path_length);
-    DIR *dirp = opendir(path);
-    struct stat sb;
-    int s = 0;
-    // Check for any errors
-    if(dirp == NULL){
-        perror("opendir");
-        retval = -1;
-        goto close_dir;
-    }
-    char *filename;
-    struct dirent *contents = readdir(dirp); // contains d_ino, d_name
-    // node filenode;
-    while(contents){
-        // offset = 0;
-        filename = contents->d_name;
-        // memset(&filenode, '\0', strlen(filename));
-        // filenode = create(filename, NULL);
-        memcpy(filepath+path_length, filename, strlen(filename)+1);
-        s = stat(filepath, &sb);
-        if(opts[4]){
-            add_inode(&printed_str, sb);
-            // offset += 10;
+    for (int optind = opts[7]; optind < argc; optind++) {
+        char *path = malloc(512);
+        if(argv[optind] == NULL){
+            getcwd(path, 512);
         }
-        if(opts[0]){
-            // printf("Construction of list has been started.\n");
-            // printed_str.next = NULL;
-            printed_str = construct_list(create(""), sb);
-            // printf("\n LIST HAS BEEN CONSTRUCTED \n");
+        else strcpy(path, argv[optind]);
+        add_slash(path);
+        char *filepath = malloc(512);
+        int path_length = strlen(path);
+        memcpy(filepath, path, path_length);
+        DIR *dirp = opendir(path);
+        struct stat sb;
+        int s = 0;
+        // Check for any errors
+        if(dirp == NULL){
+            perror("opendir");
+            retval = -1;
+            goto close_dir;
         }
-        if(opts[2]){
-          // printf("%s  %s\n", printed_str.val, filename);
-          // append(&printed_str, &filenode);
-            printf("%s --> ", filename);
-            // printlist(&printed_str);
-            printf("\n");
-        }
-        else{
-            if(filename[0] != '.'){
-                printf("%s --> ", filename);
-                printlist(&printed_str);
-                printf("\n");
+        char *filename;
+        struct dirent *contents = readdir(dirp); // contains d_ino, d_name
+        printf("\n%s:\n", path);
+        while(contents){
+            node *printed_str = create("");
+            filename = contents->d_name;
+            memcpy(filepath+path_length, filename, strlen(filename)+1);
+            s = stat(filepath, &sb);
+            if(opts[4]){
+                printed_str = add_inode(printed_str, sb);
             }
+            if(opts[0]){
+                printed_str = construct_list(printed_str, sb);
+            }
+            if(opts[2]){
+                printlist(printed_str);
+                printf("%s\n", filename);
+            }
+            else{
+                if(filename[0] != '.'){
+                    printlist(printed_str);
+                    printf("%s\n", filename);
+                }
+            }
+            contents = readdir(dirp);
+            freelist(printed_str);
         }
-        // memset(&printed_str, '\0', offset+100);
-        contents = readdir(dirp);
+
+        close_dir:
+        closedir(dirp);
+        
+
+        //frees
+        free(path);
+        free(filepath);
+        (void) s;
     }
-
-    close_dir:
-    (void) s;
-    closedir(dirp);
-
-    // free(&printed_str);
-    // freelist(&printed_str);
-    free(path);
-    free(filepath);
     free(opts);
     return retval;
 }
