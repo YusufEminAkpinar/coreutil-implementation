@@ -16,8 +16,6 @@
  *
  * Implement recursive list
  *
- * Implement giving more path like ls path1, path2, path3...
- *
  */
 
 int *options(int argc, char *argv[]){
@@ -104,7 +102,7 @@ int *conv_to_bin(int num){
 
 char *convert_permission_to_string(int perms){
     // Integer definitions for permission bits. Also normalized it to 1-2-4.
-    int special =((perms & S_ISUID)+(perms & S_ISGID)+(perms & S_ISVTX))/512;
+    int special = ((perms & S_ISUID)+(perms & S_ISGID)+(perms & S_ISVTX))/512;
     int user    = (perms & S_IRWXU)/64;
     int group   = (perms & S_IRWXG)/8;
     int others  = perms & S_IRWXO;
@@ -119,11 +117,10 @@ char *convert_permission_to_string(int perms){
     int *others_bin = conv_to_bin(others);
     int *special_bin = conv_to_bin(special);// [sticky, gid, uid]
 
-    /* arr = [
+    /* arr = [ filetype,
     * usr_read,    usr_write,    usr_exec
     * grp_read,    grp_write,    grp_exec
     * others_read, others_write, others_exec
-    * SUID,        SGID,         Sticky bit
     * ]*/
     // 1 filetype, 3 user, 3 group, 3 others = 10
     char *arr = malloc(11 * sizeof(char)); 
@@ -181,7 +178,6 @@ typedef struct node{
 node *create(char *val){
     node *ret = (node *)malloc(sizeof(node));
     if (ret != NULL) {
-        // strcpy(ret->val, val);
         snprintf(ret->val, sizeof(ret->val), "%s", val);
         ret->next = NULL;
     }else{
@@ -297,9 +293,7 @@ int main(int argc, char *argv[])
 {
     // list, size, all, reverse, inode, time, Recursive
     int *opts = options(argc, argv);
-    // int optind = opts[7];
     int retval = 0;
-    // int offset = 0;
     for (int optind = opts[7]; optind < argc; optind++) {
         char *path = malloc(512);
         if(argv[optind] == NULL){
