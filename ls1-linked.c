@@ -16,6 +16,7 @@
  *
  * Implement recursive list
  *
+ * Implement sorting respect to time etc.
  */
 
 int *options(int argc, char *argv[]){
@@ -294,9 +295,12 @@ int main(int argc, char *argv[])
     // list, size, all, reverse, inode, time, Recursive
     int *opts = options(argc, argv);
     int retval = 0;
-    for (int optind = opts[7]; optind < argc; optind++) {
+    if(opts[7] == argc)
+    // for (int optind = opts[7]; optind < argc; optind++) {
+    do {
+        int optind = opts[7];
         char *path = malloc(512);
-        if(argv[optind] == NULL){
+        if(argc == optind){
             getcwd(path, 512);
         }
         else strcpy(path, argv[optind]);
@@ -343,13 +347,14 @@ int main(int argc, char *argv[])
 
         close_dir:
         closedir(dirp);
-        
 
         //frees
         free(path);
         free(filepath);
         (void) s;
-    }
+        optind++;
+    } 
+    while (optind < argc);;
     free(opts);
     return retval;
 }
